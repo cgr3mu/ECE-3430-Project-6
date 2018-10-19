@@ -12,9 +12,6 @@ void ConfigureClockModule();
 
 void main(void)
 {
-    volatile unsigned int ID_U3;
-    volatile unsigned int ID_U2;
-
     // Stop the watchdog timer, and configure the clock module.
 	WDTCTL = WDTPW + WDTHOLD;
     ConfigureClockModule();
@@ -24,12 +21,14 @@ void main(void)
     InitializeSPI();
     InitializeSerialFlash();
 
-	// Insert code to perform tests of SPI and/or serial Flash functionality.
-    while(TRUE){
-        ID_U3 = ReadFlashMemoryID(FLASH_MEMORY_U3);
-        ID_U2 = ReadFlashMemoryID(FLASH_MEMORY_U2);
-        _delay_cycles(1000000);
+    volatile unsigned char STAT_U3;
+    volatile unsigned char STAT_U2;
+    unsigned char sendInstruction = (FULL << 2) + (1 << 7);
+
+    while (TRUE) {
+
     }
+	// Insert code to perform tests of SPI and/or serial Flash functionality.
 }
 
 void ConfigureClockModule()

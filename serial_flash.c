@@ -2,52 +2,47 @@
 
 void InitializeSerialFlash()
 {
-    SET_U3_AS_AN_OUTPUT;
+    SET_CHIP_ENABLE_U3_AS_OUTPUT;
     DISABLE_FLASH_MEMORY_U3;
-
-    SET_U2_AS_AN_OUTPUT;
+    ENABLE_U3_HOLD_AS_OUTPUT;
+    DISABLE_U3_HOLD;
+    SET_CHIP_ENABLE_U2_AS_OUTPUT;
     DISABLE_FLASH_MEMORY_U2;
-
-    SET_HOLD_U3_AS_AN_OUTPUT;
-    TURN_OFF_HOLD_U3;
-
-    SET_HOLD_U2_AS_AN_OUTPUT;
-    TURN_OFF_HOLD_U2;
-
-    SET_WRITE_PROTECT;
-    TURN_OFF_WRITE_PROTECT;
+    ENABLE_U2_HOLD_AS_OUTPUT;
+    DISABLE_U2_HOLD;
+    ENABLE_WRITE_PROTECT_AS_OUTPUT;
 }
 
 unsigned int ReadFlashMemoryID(unsigned char ComponentNumber)
 {
    unsigned int ReturnValue = 0;
-   unsigned char ID[2] = {0x00, 0x00};
-   // First enable the appropriate device
-   // \ and # indicate active low
-   if(ComponentNumber == FLASH_MEMORY_U2){
-       ENABLE_FLASH_MEMORY_U2;
-   }
-   else{
+   unsigned char ID[2] = {0x00,0x00};
+
+   //First enable appropriate device
+   if(ComponentNumber == FLASH_MEMORY_U3)
        ENABLE_FLASH_MEMORY_U3;
-   }
-   // Now, send the command.
+   else
+       ENABLE_FLASH_MEMORY_U2;
+
+   //Now, send the command
    SPISendByte(READ_ID);
 
-  //Then, send the address
-   SPISendByte(0x00);SPISendByte(0x00);SPISendByte(0x00);
+   //Send the address
+   SPISendByte(0x00);
+   SPISendByte(0x00);
+   SPISendByte(0x00);
 
-   // Now receive the device ID
+   //read the device ID
    ID[0] = SPIReceiveByte();
    ID[1] = SPIReceiveByte();
 
-   // Finally disable the appropriate device
-   if(ComponentNumber == FLASH_MEMORY_U2){
-       DISABLE_FLASH_MEMORY_U2;
-   }
-   else{
-       DISABLE_FLASH_MEMORY_U3;
-   }
-   ReturnValue = ((unsigned int)ID[0]<<8) + (unsigned int)ID[1];
+   //Finally disable appropriate device
+   if(ComponentNumber == FLASH_MEMORY_U3)
+          DISABLE_FLASH_MEMORY_U3;
+      else
+          DISABLE_FLASH_MEMORY_U2;
+
+   ReturnValue = (((unsigned int)ID[0])<<8) + ((unsigned int)ID[1]) ;
    return ReturnValue;
 }
 
@@ -55,18 +50,82 @@ unsigned char ReadFlashMemoryStatusRegister(unsigned char ComponentNumber)
 {
 	unsigned char RegisterValue = 0;
 
+    //First enable appropriate device
+    if(ComponentNumber == FLASH_MEMORY_U3)
+        ENABLE_FLASH_MEMORY_U3;
+    else
+        ENABLE_FLASH_MEMORY_U2;
+
+    //Now, send the command
+    SPISendByte(RDSR);
+
+    //read the device status
+    RegisterValue = SPIReceiveByte();
+
+    //Finally disable appropriate device
+    if(ComponentNumber == FLASH_MEMORY_U3)
+        DISABLE_FLASH_MEMORY_U3;
+    else
+        DISABLE_FLASH_MEMORY_U2;
 
 	return RegisterValue;
 }
 
 void WriteFlashMemoryStatusRegister(unsigned char WriteValue,unsigned char ComponentNumber)
 {
+    DISABLE_WRITE_PROTECT;
+
+    //First enable appropriate device
+    if(ComponentNumber == FLASH_MEMORY_U3)
+        ENABLE_FLASH_MEMORY_U3;
+    else
+        ENABLE_FLASH_MEMORY_U2;
+
+    //Now, send the EWSR command to enable writing to the status register
+    SPISendByte(EWSR);
+
+    //Disable the appropriate device to actually cause the RDSR command to execute
+    if(ComponentNumber == FLASH_MEMORY_U3)
+        DISABLE_FLASH_MEMORY_U3;
+    else
+        DISABLE_FLASH_MEMORY_U2;
+
+    //re-enable appropriate device
+    if(ComponentNumber == FLASH_MEMORY_U3)
+        ENABLE_FLASH_MEMORY_U3;
+    else
+        ENABLE_FLASH_MEMORY_U2;
+
+    //Send WRSR instruction followed by the value to be written
+    SPISendByte(WRSR);
+    SPISendByte(WriteValue);
+
+    //Disable the appropriate device
+    if(ComponentNumber == FLASH_MEMORY_U3)
+        DISABLE_FLASH_MEMORY_U3;
+    else
+        DISABLE_FLASH_MEMORY_U2;
+
+    ENABLE_WRITE_PROTECT;
 
 }
 
+//readmode is used to enable high speed read, but we can't use that with the MSP
 void ReadFlashMemory(unsigned long StartAddress, unsigned char* DataValuesArray,
 unsigned int NumberOfDataValues, unsigned char ComponentNumber, unsigned char ReadMode)
 {
+    //First enable appropriate device
+    if(ComponentNumber == FLASH_MEMORY_U3)
+        ENABLE_FLASH_MEMORY_U3;
+    else
+        ENABLE_FLASH_MEMORY_U2;
+
+    int x;
+    for(x = 0; x<NumberOfDataValues; x++)
+    {
+
+    }
+}
 
 }
 
@@ -95,12 +154,17 @@ unsigned char EraseMode)
 
 void SetBlockProtection(unsigned char ProtectionLevel, unsigned char ComponentNumber)
 {
+    unsigned char sendInstruction = (ProtectionLevel << 2);
+    WriteFlashMemoryStatusRegister(sendInstruction,ComponentNumber);
 
 }
 
 unsigned char FlashMemoryBusy(unsigned char ComponentNumber)
 {
-    unsigned char Busy = 0;
+    //receive status from the component
+    unsigned char status = ReadFlashMemoryStatusRegister(ComponentNumber);
+    //logical and it with 0x01 to just get the last bit
+    const unsigned char Busy = status & 0x01;
 
 
     return Busy;
