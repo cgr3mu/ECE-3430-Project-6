@@ -23,7 +23,6 @@ void main(void)
 
     volatile unsigned char STAT_U3;
     volatile unsigned char STAT_U2;
-    unsigned char sendInstruction = (FULL << 2) + (1 << 7);
 
     while (TRUE) {
 

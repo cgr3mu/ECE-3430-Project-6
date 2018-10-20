@@ -120,11 +120,33 @@ unsigned int NumberOfDataValues, unsigned char ComponentNumber, unsigned char Re
     else
         ENABLE_FLASH_MEMORY_U2;
 
+    //check which read mode we should be using
+    if(ReadMode)
+        SPISendByte(READ);
+    else
+        SPISendByte(HIGH_SPEED_READ);
+
+    //rip the Start Address into three bytes, send each byte to the flash
+    unsigned char firstByte =(unsigned char)( (StartAddress & 0xFF0000) >> 16);
+    unsigned char secondByte =(unsigned char)( (StartAddress & 0x00FF00) >> 8);
+    unsigned char thirdByte =(unsigned char)( (StartAddress & 0x0000FF));
+    SPISendByte(firstByte);
+    SPISendByte(secondByte);
+    SPISendByte(thirdByte);
+
     int x;
+    //for each data value we should be reading
     for(x = 0; x<NumberOfDataValues; x++)
     {
-
+        DataValuesArray[x] = SPIRecieveByte();
     }
+
+    if(ComponentNumber == FLASH_MEMORY_U3)
+        DISABLE_FLASH_MEMORY_U3;
+    else
+        DISABLE_FLASH_MEMORY_U2;
+
+    return;
 }
 
 }
@@ -132,6 +154,16 @@ unsigned int NumberOfDataValues, unsigned char ComponentNumber, unsigned char Re
 void ByteProgramFlashMemory(unsigned long MemoryAddress, unsigned char WriteValue, 
 unsigned char ComponentNumber)
 {
+    //Enable the flash
+    if(ComponentNumber == FLASH_MEMORY_U3)
+        ENABLE_FLASH_MEMORY_U3;
+    else
+        ENABLE_FLASH_MEMORY_U2;
+
+    //Save the old status of Flash to restore it later
+    unsigned char oldStatus =  ReadFlashMemoryStatusRegister(ComponentNumber);
+
+
 
 }
 
