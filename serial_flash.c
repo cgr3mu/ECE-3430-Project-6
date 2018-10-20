@@ -149,7 +149,6 @@ unsigned int NumberOfDataValues, unsigned char ComponentNumber, unsigned char Re
     return;
 }
 
-}
 
 void ByteProgramFlashMemory(unsigned long MemoryAddress, unsigned char WriteValue, 
 unsigned char ComponentNumber)
@@ -167,11 +166,42 @@ unsigned char ComponentNumber)
 
 }
 
+//Connor Roos
 void AAIProgramFlashMemory(unsigned long StartAddress, unsigned char* DataValuesArray,
 unsigned int NumberOfDataValues, unsigned char ComponentNumber)
 {
+    DISABLE_WRITE_PROTECT;
 
+    //Disable the appropriate device
+    if(ComponentNumber == FLASH_MEMORY_U3)
+        DISABLE_FLASH_MEMORY_U3;
+    else
+        DISABLE_FLASH_MEMORY_U2;
+
+    SPISendByte(WREN);
+    SPISendByte(AAI_PROGRAM);
+
+    unsigned char Address1 = (unsigned char) (StartAddress >> 16);
+    unsigned char Address2 = (unsigned char) (StartAddress >> 8);
+    unsigned char Address3 = (unsigned char) (StartAddress);
+
+    SPISendByte(Address1);
+    SPISendByte(Address2);
+    SPISendByte(Address3);
+
+    int i = 0;
+    for(i = 0; i <NumberOfDataValues; i ++)
+        SPISendByte(DataValuesArray[i]);
+
+    //Disable the appropriate device
+    if(ComponentNumber == FLASH_MEMORY_U3)
+        DISABLE_FLASH_MEMORY_U3;
+    else
+        DISABLE_FLASH_MEMORY_U2;
+
+    ENABLE_WRITE_PROTECT;
 }
+
 
 void ChipEraseFlashMemory(unsigned char ComponentNumber)
 {
