@@ -202,10 +202,35 @@ unsigned int NumberOfDataValues, unsigned char ComponentNumber)
     ENABLE_WRITE_PROTECT;
 }
 
-
+//Connor Roos
 void ChipEraseFlashMemory(unsigned char ComponentNumber)
 {
+    //I don't think this will work on its own
+    if(SR_BUSY){
+        DISABLE_WRITE_PROTECT;
 
+        //Disable the appropriate device
+        if(ComponentNumber == FLASH_MEMORY_U3)
+            DISABLE_FLASH_MEMORY_U3;
+        else
+            DISABLE_FLASH_MEMORY_U2;
+        //WREN Command
+        SPISendByte(WREN);
+
+        //Send Byte to Make Active Low
+        SPISendByte();
+
+        //Erase Command
+        SPISendByte(0x60H);
+
+        //Disable the appropriate device
+        if(ComponentNumber == FLASH_MEMORY_U3)
+            DISABLE_FLASH_MEMORY_U3;
+        else
+            DISABLE_FLASH_MEMORY_U2;
+
+        ENABLE_WRITE_PROTECT;
+    }
 }
 
 void SectorBlockEraseFlashMemory(unsigned long StartAddress, unsigned char ComponentNumber, 
