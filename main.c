@@ -24,7 +24,17 @@ void main(void)
     volatile unsigned char STAT_U3;
     volatile unsigned char STAT_U2;
 
+
+    unsigned char * Array = {0};
+    volatile unsigned char x;
+
     while (TRUE) {
+        ReadFlashMemory(0x08000, Array,2, FLASH_MEMORY_U3, 0);
+        x = Array[0];
+        ChipEraseFlashMemory(FLASH_MEMORY_U3);
+        ReadFlashMemory(0x08000, Array,2, FLASH_MEMORY_U3, 0);
+        x = Array[0];
+        ByteProgramFlashMemory(0x08000, 0xBC, FLASH_MEMORY_U3);
 
     }
 	// Insert code to perform tests of SPI and/or serial Flash functionality.
