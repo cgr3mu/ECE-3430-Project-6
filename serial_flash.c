@@ -264,14 +264,19 @@ void ChipEraseFlashMemory(unsigned char ComponentNumber)
 void SectorBlockEraseFlashMemory(unsigned long StartAddress, unsigned char ComponentNumber, 
 unsigned char EraseMode)
 {
-    DISABLE_WRITE_PROTECT;
 
     //Enable the appropriate device
     if(ComponentNumber == FLASH_MEMORY_U3)
         ENABLE_FLASH_MEMORY_U3;
     else
         ENABLE_FLASH_MEMORY_U2;
-    
+    //Save the old status of Flash to restore it later
+    unsigned char oldStatus =  ReadFlashMemoryStatusRegister(ComponentNumber);
+
+    SetBlockProtection(NONE,ComponentNumber);
+
+    DISABLE_WRITE_PROTECT;
+
     SPISendByte(WREN);
 
     SPISendByte(SECTOR_ERASE);
@@ -289,6 +294,8 @@ unsigned char EraseMode)
         DISABLE_FLASH_MEMORY_U3;
     else
         DISABLE_FLASH_MEMORY_U2;
+
+    SetBlockProtection(oldStatus,ComponentNumber);
 
     ENABLE_WRITE_PROTECT;
 
