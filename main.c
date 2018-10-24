@@ -25,16 +25,32 @@ void main(void)
     volatile unsigned char STAT_U2;
 
 
-    unsigned char * Array = {0};
+    unsigned char Array[1];
     volatile unsigned char x;
 
+    //volatile unsigned char ST = ReadFlashMemoryStatusRegister(FLASH_MEMORY_U3);
+
     while (TRUE) {
-        ReadFlashMemory(0x08000, Array,2, FLASH_MEMORY_U3, 0);
+        ReadFlashMemory(0x05555, Array,1, FLASH_MEMORY_U3, 0);
         x = Array[0];
+
+        //Save the old status of Flash to restore it later
+        unsigned char oldStatus =  ReadFlashMemoryStatusRegister(FLASH_MEMORY_U3);
+
+        //save the old level of protection to restore it after this
+        SetBlockProtection(NONE,FLASH_MEMORY_U3);
+        DISABLE_WRITE_PROTECT;
+
         ChipEraseFlashMemory(FLASH_MEMORY_U3);
-        ReadFlashMemory(0x08000, Array,2, FLASH_MEMORY_U3, 0);
+
+
+        //restore old level of protection
+        SetBlockProtection(oldStatus,FLASH_MEMORY_U3);
+        ENABLE_WRITE_PROTECT;
+
+        ReadFlashMemory(0x05555, Array,1, FLASH_MEMORY_U3, 0);
         x = Array[0];
-        ByteProgramFlashMemory(0x08000, 0xBC, FLASH_MEMORY_U3);
+        ByteProgramFlashMemory(0x05555, 0xBC, FLASH_MEMORY_U3);
 
     }
 	// Insert code to perform tests of SPI and/or serial Flash functionality.
