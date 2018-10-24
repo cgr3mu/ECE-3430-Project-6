@@ -121,7 +121,7 @@ unsigned int NumberOfDataValues, unsigned char ComponentNumber, unsigned char Re
         ENABLE_FLASH_MEMORY_U2;
 
     //check which read mode we should be using
-    if(!(ReadMode))
+    if(ReadMode)
         SPISendByte(READ);
     else
         SPISendByte(HIGH_SPEED_READ);
@@ -134,7 +134,7 @@ unsigned int NumberOfDataValues, unsigned char ComponentNumber, unsigned char Re
     SPISendByte(secondByte);
     SPISendByte(thirdByte);
 
-    unsigned int x;
+    int x;
     //for each data value we should be reading
     for(x = 0; x<NumberOfDataValues; x++)
     {
@@ -196,10 +196,40 @@ unsigned char ComponentNumber)
 
 }
 
+//Connor Roos
 void AAIProgramFlashMemory(unsigned long StartAddress, unsigned char* DataValuesArray,
 unsigned int NumberOfDataValues, unsigned char ComponentNumber)
 {
+    DISABLE_WRITE_PROTECT;
 
+    //Enable the appropriate device
+    if(ComponentNumber == FLASH_MEMORY_U3)
+        ENABLE_FLASH_MEMORY_U3;
+    else
+        ENABLE_FLASH_MEMORY_U2;
+
+    SPISendByte(WREN);
+    SPISendByte(AAI_PROGRAM);
+
+    unsigned char Address1 = (unsigned char) (StartAddress >> 16);
+    unsigned char Address2 = (unsigned char) (StartAddress >> 8);
+    unsigned char Address3 = (unsigned char) (StartAddress);
+
+    SPISendByte(Address1);
+    SPISendByte(Address2);
+    SPISendByte(Address3);
+
+    int i = 0;
+    for(i = 0; i <NumberOfDataValues; i ++)
+        SPISendByte(DataValuesArray[i]);
+
+    //Disable the appropriate device
+    if(ComponentNumber == FLASH_MEMORY_U3)
+        DISABLE_FLASH_MEMORY_U3;
+    else
+        DISABLE_FLASH_MEMORY_U2;
+
+    ENABLE_WRITE_PROTECT;
 }
 
 void ChipEraseFlashMemory(unsigned char ComponentNumber)
@@ -210,21 +240,12 @@ void ChipEraseFlashMemory(unsigned char ComponentNumber)
     else
         ENABLE_FLASH_MEMORY_U2;
 
-    //send write enable
-    SPISendByte(WREN);
+    //Save the old status of Flash to restore it later
+    unsigned char oldStatus =  ReadFlashMemoryStatusRegister(ComponentNumber);
 
-    //disable and re-enable to cause WREN command to execute
-    if(ComponentNumber == FLASH_MEMORY_U3)
-        DISABLE_FLASH_MEMORY_U3;
-    else
-        DISABLE_FLASH_MEMORY_U2;
-    while(FlashMemoryBusy(ComponentNumber));
-    if(ComponentNumber == FLASH_MEMORY_U3)
-        ENABLE_FLASH_MEMORY_U3;
-    else
-        ENABLE_FLASH_MEMORY_U2;
+    SetBlockProtection(NONE,ComponentNumber);
+    DISABLE_WRITE_PROTECT;
 
-    //Send chip erase instruction
     SPISendByte(CHIP_ERASE);
 
     //Disable the appropriate device
@@ -233,14 +254,17 @@ void ChipEraseFlashMemory(unsigned char ComponentNumber)
     else
         DISABLE_FLASH_MEMORY_U2;
 
-    volatile unsigned char hey = FlashMemoryBusy(ComponentNumber);
     //wait until flash is done programming itself
     while(FlashMemoryBusy(ComponentNumber));
+
+    SetBlockProtection(oldStatus,ComponentNumber);
+    ENABLE_WRITE_PROTECT;
 }
 
 void SectorBlockEraseFlashMemory(unsigned long StartAddress, unsigned char ComponentNumber, 
 unsigned char EraseMode)
 {
+
     //Enable the appropriate device
     if(ComponentNumber == FLASH_MEMORY_U3)
         ENABLE_FLASH_MEMORY_U3;
