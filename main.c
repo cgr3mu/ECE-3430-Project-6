@@ -50,7 +50,20 @@ void main(void)
 
         ReadFlashMemory(0x05555, Array,1, FLASH_MEMORY_U3, 0);
         x = Array[0];
+
+
+        //Save the old status of Flash to restore it later
+        oldStatus =  ReadFlashMemoryStatusRegister(FLASH_MEMORY_U3);
+
+        SetBlockProtection(NONE,FLASH_MEMORY_U3);
+        DISABLE_WRITE_PROTECT;
+
+
         ByteProgramFlashMemory(0x05555, 0xBC, FLASH_MEMORY_U3);
+
+
+        SetBlockProtection(oldStatus,FLASH_MEMORY_U3);
+        ENABLE_WRITE_PROTECT;
 
     }
 	// Insert code to perform tests of SPI and/or serial Flash functionality.
