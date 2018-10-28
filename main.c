@@ -2,7 +2,7 @@
 #include "LED.h"
 #include "spi.h"
 #include "serial_flash.h"
-
+#include <stdlib.h>
 // Local prototypes
 void ConfigureClockModule();
 
@@ -25,14 +25,18 @@ void main(void)
     volatile unsigned char STAT_U2;
 
 
-    unsigned char Array[1];
-    volatile unsigned char x;
-
+    unsigned char Array[3];
+    unsigned char* writeArray;
+    writeArray = (unsigned char*) calloc (3,sizeof(unsigned char));
+    writeArray[0] = 1;
+    writeArray[1] = 2;
+    writeArray[2] = 3;
+    volatile unsigned char x, x1, x2;
     //volatile unsigned char ST = ReadFlashMemoryStatusRegister(FLASH_MEMORY_U3);
 
     while (TRUE) {
-        ReadFlashMemory(0x05555, Array,1, FLASH_MEMORY_U3, 0);
-        x = Array[0];
+ //       ReadFlashMemory(0x05555, Array,1, FLASH_MEMORY_U3, 0);
+//        x = Array[0];
 
         //Save the old status of Flash to restore it later
         unsigned char oldStatus =  ReadFlashMemoryStatusRegister(FLASH_MEMORY_U3);
@@ -45,11 +49,11 @@ void main(void)
 
 
         //restore old level of protection
-        SetBlockProtection(oldStatus,FLASH_MEMORY_U3);
-        ENABLE_WRITE_PROTECT;
+ //       SetBlockProtection(oldStatus,FLASH_MEMORY_U3);
+ //       ENABLE_WRITE_PROTECT;
 
-        ReadFlashMemory(0x05555, Array,1, FLASH_MEMORY_U3, 0);
-        x = Array[0];
+  //      ReadFlashMemory(0x05555, Array,1, FLASH_MEMORY_U3, 0);
+ //       x = Array[0];
 
 
         //Save the old status of Flash to restore it later
@@ -59,9 +63,14 @@ void main(void)
         DISABLE_WRITE_PROTECT;
 
 
-        ByteProgramFlashMemory(0x05555, 0xBC, FLASH_MEMORY_U3);
+//      ByteProgramFlashMemory(0x05555, 0xBC, FLASH_MEMORY_U3);
+        AAIProgramFlashMemory(0x05555, writeArray, 3, FLASH_MEMORY_U3);
 
+        ReadFlashMemory(0x05555, Array, 3, FLASH_MEMORY_U3, 0);
 
+        x = Array[0];
+        x1 = Array[1];
+        x2 = Array[2];
         SetBlockProtection(oldStatus,FLASH_MEMORY_U3);
         ENABLE_WRITE_PROTECT;
 

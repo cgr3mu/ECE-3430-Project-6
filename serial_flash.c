@@ -201,6 +201,7 @@ unsigned char ComponentNumber)
 
 }
 //Connor Roos
+//Test using a check-sum, basically know the sums of the values in the DataValuesArray and use readFlashMemory to grab them
 void AAIProgramFlashMemory(unsigned long StartAddress, unsigned char* DataValuesArray,
 unsigned int NumberOfDataValues, unsigned char ComponentNumber)
 {
@@ -224,15 +225,17 @@ unsigned int NumberOfDataValues, unsigned char ComponentNumber)
     SPISendByte(Address3);
 
     int i = 0;
-    for(i = 0; i <NumberOfDataValues; i ++)
+    for(i = 0; i <NumberOfDataValues; i ++){
+        SPISendByte(AAI_PROGRAM);
         SPISendByte(DataValuesArray[i]);
+    }
+    SPISendByte(WRDI);
 
     //Disable the appropriate device
     if(ComponentNumber == FLASH_MEMORY_U3)
         DISABLE_FLASH_MEMORY_U3;
     else
         DISABLE_FLASH_MEMORY_U2;
-
     ENABLE_WRITE_PROTECT;
 }
 
