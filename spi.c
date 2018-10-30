@@ -1,44 +1,56 @@
 #include "spi.h"
-#define MSB_MASK 0x80
 
 void InitializeSPI()
-{
-    TURN_OFF_SCK;
-    TURN_OFF_MOSI;
-    SET_MISO_AS_AN_INPUT;
-    SET_MOSI_AS_AN_OUTPUT;
-    SET_SCK_AS_AN_OUTPUT;
+{	
+	/* Note that the SPI functionality is being implemented in software 
+	 * (that is, "bit banging").  As such, the USCI module is not being used.
+	 */
+	SET_USCIB0_MOSI_AS_AN_OUTPUT;
+	SET_USCIB0_MISO_AS_AN_INPUT;
+	INITIALIZE_SPI_SCK;
+	SET_SPI_SCK_AS_AN_OUTPUT;
 }
 
 void SPISendByte(unsigned char SendValue)
 {
-    unsigned char SendValueCopy = SendValue;
-    int x;
-    for(x = 0 ; x<8; x++)
-    {
-        if(SendValueCopy & MSB_MASK)
-            TURN_ON_MOSI;
-        else
-            TURN_OFF_MOSI;
-        SendValueCopy = SendValueCopy << 1;
-        TOGGLE_SCK;
-        TOGGLE_SCK;
-    }
+	unsigned short k;
+	unsigned char LocalSendValue;
+
+	LocalSendValue = SendValue;
+
+	for (k = 0; k < 8; k++){
+		
+		// Assign a value to the MOSI based on the value of the MSB.
+		if (LocalSendValue & 0x80) {
+			WRITE_LOGIC_1_TO_SLAVE;
+		}
+		else {
+			WRITE_LOGIC_0_TO_SLAVE;
+		}
+		
+		// Left-shift local copy of data to send.
+		LocalSendValue <<= 1;
+
+		// Toggle SPI Clock: (HIGH XOR 1) -> LOW, and (LOW XOR 1) -> HIGH
+		TOGGLE_SPI_SCK; TOGGLE_SPI_SCK; 
+	}
 
 }
 
 unsigned char SPIReceiveByte()
 {
+	short k;
 	unsigned char ReceiveValue = 0;
-	int x;
-    for(x = 0 ; x<8; x++)
-    {
-        ReceiveValue = ReceiveValue << 1;
-        ReceiveValue |= READ_MISO_PIN;
-        TOGGLE_SCK;
-        TOGGLE_SCK;
-    }
+		
+	for (k = 0; k < 8; k++) {
+		
+		// Left-shift the current value of ReceiveValue, and OR
+		// the result with the value of MISO.
+	  ReceiveValue = (ReceiveValue << 1) | READ_BIT_FROM_SLAVE;
 
+		// Toggle SPI Clock: (HIGH XOR 1) -> LOW, and (LOW XOR 1) -> HIGH
+		TOGGLE_SPI_SCK; TOGGLE_SPI_SCK;
+	}
 	return ReceiveValue;
 }
 
