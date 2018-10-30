@@ -206,7 +206,52 @@ unsigned char ComponentNumber)
 void AAIProgramFlashMemory(unsigned long StartAddress, unsigned char* DataValuesArray,
 unsigned int NumberOfDataValues, unsigned char ComponentNumber)
 {
+    //Enable the flash
+       if(ComponentNumber == FLASH_MEMORY_U3)
+           ENABLE_FLASH_MEMORY_U3;
+       else
+           ENABLE_FLASH_MEMORY_U2;
 
+       //send instruction
+       SPISendByte(WREN);
+
+       //Disable the appropriate device
+             if(ComponentNumber == FLASH_MEMORY_U3)
+                 DISABLE_FLASH_MEMORY_U3;
+             else
+                 DISABLE_FLASH_MEMORY_U2;
+             if(ComponentNumber == FLASH_MEMORY_U3)
+                 ENABLE_FLASH_MEMORY_U3;
+             else
+                 ENABLE_FLASH_MEMORY_U2;
+
+       SPISendByte(AAI_PROGRAM);
+
+       //send address to program
+       unsigned char firstByte =(unsigned char)( (StartAddress & 0xFF0000) >> 16);
+       unsigned char secondByte =(unsigned char)( (StartAddress & 0x00FF00) >> 8);
+       unsigned char thirdByte =(unsigned char)( (StartAddress & 0x0000FF));
+       SPISendByte(firstByte);
+       SPISendByte(secondByte);
+       SPISendByte(thirdByte);
+
+       unsigned int i = 0;
+       for(i = 0; i <NumberOfDataValues; i ++){
+           SPISendByte(AAI_PROGRAM);
+           SPISendByte(DataValuesArray[i]);
+       }
+       SPISendByte(WRDI);
+
+       //Disable the appropriate device
+       if(ComponentNumber == FLASH_MEMORY_U3)
+           DISABLE_FLASH_MEMORY_U3;
+       else
+           DISABLE_FLASH_MEMORY_U2;
+
+       //wait until flash is done programming itself
+       while(FlashMemoryBusy(ComponentNumber));
+
+       return;
 }
 
 void ChipEraseFlashMemory(unsigned char ComponentNumber)
@@ -248,7 +293,42 @@ void ChipEraseFlashMemory(unsigned char ComponentNumber)
 void SectorBlockEraseFlashMemory(unsigned long StartAddress, unsigned char ComponentNumber, 
 unsigned char EraseMode)
 {
+    //Enable the appropriate device
+    if(ComponentNumber == FLASH_MEMORY_U3)
+        ENABLE_FLASH_MEMORY_U3;
+    else
+        ENABLE_FLASH_MEMORY_U2;
+    //Save the old status of Flash to restore it later
+    unsigned char oldStatus =  ReadFlashMemoryStatusRegister(ComponentNumber);
 
+    SetBlockProtection(NONE,ComponentNumber);
+
+    DISABLE_WRITE_PROTECT;
+
+    SPISendByte(WREN);
+
+    SPISendByte(SECTOR_ERASE);
+
+    unsigned char Address1 = (unsigned char) (StartAddress >> 16);
+    unsigned char Address2 = (unsigned char) (StartAddress >> 8);
+    unsigned char Address3 = (unsigned char) (StartAddress);
+
+    SPISendByte(Address1);
+    SPISendByte(Address2);
+    SPISendByte(Address3);
+
+    //Disable the appropriate device
+    if(ComponentNumber == FLASH_MEMORY_U3)
+        DISABLE_FLASH_MEMORY_U3;
+    else
+        DISABLE_FLASH_MEMORY_U2;
+
+    SetBlockProtection(oldStatus,ComponentNumber);
+
+    ENABLE_WRITE_PROTECT;
+
+    //wait until flash is done programming itself
+    while(FlashMemoryBusy(ComponentNumber));
 }
 
 void SetBlockProtection(unsigned char ProtectionLevel, unsigned char ComponentNumber)
