@@ -73,7 +73,6 @@ unsigned char ReadFlashMemoryStatusRegister(unsigned char ComponentNumber)
 
 void WriteFlashMemoryStatusRegister(unsigned char WriteValue,unsigned char ComponentNumber)
 {
-    DISABLE_WRITE_PROTECT;
 
     //First enable appropriate device
     if(ComponentNumber == FLASH_MEMORY_U3)
@@ -106,8 +105,6 @@ void WriteFlashMemoryStatusRegister(unsigned char WriteValue,unsigned char Compo
     else
         DISABLE_FLASH_MEMORY_U2;
 
-    ENABLE_WRITE_PROTECT;
-
 }
 
 //readmode is used to enable high speed read, but we can't use that with the MSP
@@ -121,10 +118,11 @@ unsigned int NumberOfDataValues, unsigned char ComponentNumber, unsigned char Re
         ENABLE_FLASH_MEMORY_U2;
 
     //check which read mode we should be using
-    if(!(ReadMode))
-        SPISendByte(READ);
-    else
+    if(ReadMode)
         SPISendByte(HIGH_SPEED_READ);
+    else
+        SPISendByte(READ);
+
 
     //rip the Start Address into three bytes, send each byte to the flash
     unsigned char firstByte =(unsigned char)( (StartAddress & 0xFF0000) >> 16);
@@ -135,12 +133,10 @@ unsigned int NumberOfDataValues, unsigned char ComponentNumber, unsigned char Re
     SPISendByte(thirdByte);
 
     unsigned int x;
-    unsigned char y;
     //for each data value we should be reading
     for(x = 0; x<NumberOfDataValues; x++)
     {
-        y = SPIReceiveByte();
-        DataValuesArray[x] = y;
+        DataValuesArray[x] = SPIReceiveByte();
     }
 
     if(ComponentNumber == FLASH_MEMORY_U3)
@@ -170,6 +166,7 @@ unsigned char ComponentNumber)
         DISABLE_FLASH_MEMORY_U3;
     else
         DISABLE_FLASH_MEMORY_U2;
+    while(FlashMemoryBusy(ComponentNumber));
     if(ComponentNumber == FLASH_MEMORY_U3)
         ENABLE_FLASH_MEMORY_U3;
     else
@@ -270,7 +267,6 @@ void ChipEraseFlashMemory(unsigned char ComponentNumber)
         DISABLE_FLASH_MEMORY_U3;
     else
         DISABLE_FLASH_MEMORY_U2;
-    while(FlashMemoryBusy(ComponentNumber));
     if(ComponentNumber == FLASH_MEMORY_U3)
         ENABLE_FLASH_MEMORY_U3;
     else
@@ -285,7 +281,6 @@ void ChipEraseFlashMemory(unsigned char ComponentNumber)
     else
         DISABLE_FLASH_MEMORY_U2;
 
-    volatile unsigned char hey = FlashMemoryBusy(ComponentNumber);
     //wait until flash is done programming itself
     while(FlashMemoryBusy(ComponentNumber));
 }
@@ -299,15 +294,29 @@ unsigned char EraseMode)
     else
         ENABLE_FLASH_MEMORY_U2;
     //Save the old status of Flash to restore it later
-    unsigned char oldStatus =  ReadFlashMemoryStatusRegister(ComponentNumber);
-
-    SetBlockProtection(NONE,ComponentNumber);
-
-    DISABLE_WRITE_PROTECT;
 
     SPISendByte(WREN);
 
-    SPISendByte(SECTOR_ERASE);
+    //Disable the appropriate device
+    if(ComponentNumber == FLASH_MEMORY_U3)
+        DISABLE_FLASH_MEMORY_U3;
+    else
+        DISABLE_FLASH_MEMORY_U2;
+    //Enable the appropriate device
+   if(ComponentNumber == FLASH_MEMORY_U3)
+       ENABLE_FLASH_MEMORY_U3;
+   else
+       ENABLE_FLASH_MEMORY_U2;
+
+    if(EraseMode)
+    {
+        SPISendByte(BLOCK_ERASE);
+    }
+    else
+    {
+        SPISendByte(SECTOR_ERASE);
+    }
+
 
     unsigned char Address1 = (unsigned char) (StartAddress >> 16);
     unsigned char Address2 = (unsigned char) (StartAddress >> 8);
@@ -323,10 +332,6 @@ unsigned char EraseMode)
     else
         DISABLE_FLASH_MEMORY_U2;
 
-    SetBlockProtection(oldStatus,ComponentNumber);
-
-    ENABLE_WRITE_PROTECT;
-
     //wait until flash is done programming itself
     while(FlashMemoryBusy(ComponentNumber));
 }
@@ -334,7 +339,7 @@ unsigned char EraseMode)
 void SetBlockProtection(unsigned char ProtectionLevel, unsigned char ComponentNumber)
 {
     unsigned char OLD_LEVEL = ReadFlashMemoryStatusRegister(ComponentNumber);
-    OLD_LEVEL ^= (ProtectionLevel << 2);
+    OLD_LEVEL ^= ~(ProtectionLevel << 2);
     WriteFlashMemoryStatusRegister(OLD_LEVEL,ComponentNumber);
 
 }
